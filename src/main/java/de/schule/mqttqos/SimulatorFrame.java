@@ -4,6 +4,9 @@ import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.concurrent.ThreadLocalRandom;
 import javax.swing.BorderFactory;
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
@@ -27,6 +30,11 @@ public final class SimulatorFrame extends JFrame {
     private final JButton sendButton = new JButton("Nachricht senden");
     private final JLabel explanationLabel = new JLabel("Wähle eine QoS-Stufe und starte die Simulation.");
     private final JTextArea logArea = new JTextArea();
+    private final CommunicationPanel communicationPanel = new CommunicationPanel();
+    private final MqttSimulationEngine simulationEngine =
+            new MqttSimulationEngine(() -> ThreadLocalRandom.current().nextInt(100));
+    private Deque<PacketEvent> pendingEvents = new ArrayDeque<>();
+    private SimulationResult activeResult;
 
     public SimulatorFrame() {
         super("MQTT-QoS-Simulator");
@@ -43,6 +51,7 @@ public final class SimulatorFrame extends JFrame {
         setContentPane(content);
 
         lossSlider.addChangeListener(event -> lossValueLabel.setText(lossSlider.getValue() + " %"));
+        sendButton.addActionListener(event -> startSimulation());
     }
 
     private JPanel createHeader() {
@@ -57,7 +66,7 @@ public final class SimulatorFrame extends JFrame {
     private JPanel createCenter() {
         JPanel center = new JPanel(new BorderLayout(12, 12));
         center.add(createControls(), BorderLayout.NORTH);
-        center.add(new CommunicationPanel(), BorderLayout.CENTER);
+        center.add(communicationPanel, BorderLayout.CENTER);
         center.add(createLogPanel(), BorderLayout.SOUTH);
         return center;
     }
@@ -98,5 +107,49 @@ public final class SimulatorFrame extends JFrame {
                 "Didaktische Simulation: Echte MQTT-Kommunikation erfolgt getrennt zwischen Client und Broker sowie Broker und Subscriber.");
         footer.setBorder(new EmptyBorder(4, 0, 0, 0));
         return footer;
+    }
+
+    private void startSimulation() {
+        QosLevel qos = qos0Button.isSelected() ? QosLevel.QOS_0
+                : qos2Button.isSelected() ? QosLevel.QOS_2 : QosLevel.QOS_1;
+        activeResult = simulationEngine.simulate(qos, lossSlider.getValue());
+        pendingEvents = new ArrayDeque<>(activeResult.events());
+        logArea.setText("--- Neue Simulation: QoS " + qos.number() + ", Paketverlust "
+                + lossSlider.getValue() + " % ---\n");
+        setControlsEnabled(false);
+        animateNextEvent();
+    }
+
+    private void animateNextEvent() {
+        PacketEvent event = pendingEvents.pollFirst();
+        if (event == null) {
+            appendLog(activeResult.delivered() ? "ERGEBNIS: " + activeResult.finalMessage()
+                    : "ERGEBNIS: " + activeResult.finalMessage());
+            setControlsEnabled(true);
+            return;
+        }
+        appendLog(event.source().label() + " → " + event.destination().label() + ": "
+                + event.displayName() + " (Versuch " + event.attempt() + ") wird gesendet.");
+        communicationPanel.animate(event, () -> {
+            if (event.lost()) {
+                appendLog("  Paketverlust: " + event.displayName() + " ist nicht angekommen.");
+            } else {
+                appendLog("  Angekommen: " + event.packetName() + ".");
+            }
+            animateNextEvent();
+        });
+    }
+
+    private void appendLog(String text) {
+        logArea.append(text + "\n");
+        logArea.setCaretPosition(logArea.getDocument().getLength());
+    }
+
+    private void setControlsEnabled(boolean enabled) {
+        qos0Button.setEnabled(enabled);
+        qos1Button.setEnabled(enabled);
+        qos2Button.setEnabled(enabled);
+        lossSlider.setEnabled(enabled);
+        sendButton.setEnabled(enabled);
     }
 }

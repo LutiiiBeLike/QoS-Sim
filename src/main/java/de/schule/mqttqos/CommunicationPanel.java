@@ -8,12 +8,35 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import javax.swing.JPanel;
+import javax.swing.Timer;
 
 /** Draws the three stations of the simplified communication path. */
 public final class CommunicationPanel extends JPanel {
+    private PacketEvent activePacket;
+    private double packetProgress;
     public CommunicationPanel() {
         setPreferredSize(new Dimension(700, 230));
         setBackground(Color.WHITE);
+    }
+
+    /** Animates one packet and invokes {@code onFinished} on the Swing event thread. */
+    public void animate(PacketEvent packet, Runnable onFinished) {
+        activePacket = packet;
+        packetProgress = 0;
+        long startedAt = System.nanoTime();
+        Timer timer = new Timer(15, null);
+        timer.addActionListener(event -> {
+            packetProgress = Math.min(1.0, (System.nanoTime() - startedAt) / 650_000_000.0);
+            repaint();
+            if (packetProgress >= 1.0) {
+                timer.stop();
+                activePacket = null;
+                repaint();
+                onFinished.run();
+            }
+        });
+        timer.setInitialDelay(0);
+        timer.start();
     }
 
     @Override
@@ -33,6 +56,7 @@ public final class CommunicationPanel extends JPanel {
         drawStation(g2, left, y, "Sender", new Color(66, 133, 244));
         drawStation(g2, middle, y, "MQTT-Broker", new Color(251, 140, 0));
         drawStation(g2, right, y, "Empfänger", new Color(67, 160, 71));
+        drawActivePacket(g2, left, middle, right, y);
         g2.dispose();
     }
 
@@ -48,5 +72,34 @@ public final class CommunicationPanel extends JPanel {
     private static void drawArrow(Graphics2D g2, int x1, int y1, int x2, int y2) {
         g2.drawLine(x1, y1, x2, y2);
         g2.fillPolygon(new int[] {x2, x2 - 10, x2 - 10}, new int[] {y2, y2 - 6, y2 + 6}, 3);
+    }
+
+    private void drawActivePacket(Graphics2D g2, int left, int middle, int right, int y) {
+        if (activePacket == null) {
+            return;
+        }
+        int start;
+        int end;
+        if (activePacket.source() == Endpoint.SENDER && activePacket.destination() == Endpoint.BROKER) {
+            start = left + 50;
+            end = middle - 58;
+        } else if (activePacket.source() == Endpoint.BROKER && activePacket.destination() == Endpoint.SENDER) {
+            start = middle - 58;
+            end = left + 50;
+        } else if (activePacket.source() == Endpoint.BROKER) {
+            start = middle + 58;
+            end = right - 50;
+        } else {
+            start = right - 50;
+            end = middle + 58;
+        }
+        int x = (int) Math.round(start + (end - start) * packetProgress);
+        String label = activePacket.displayName();
+        g2.setFont(getFont().deriveFont(Font.BOLD, 12f));
+        int width = Math.max(58, g2.getFontMetrics().stringWidth(label) + 18);
+        g2.setColor(activePacket.lost() ? new Color(198, 40, 40) : new Color(84, 110, 122));
+        g2.fillRoundRect(x - width / 2, y - 57, width, 25, 12, 12);
+        g2.setColor(Color.WHITE);
+        g2.drawString(label, x - g2.getFontMetrics().stringWidth(label) / 2, y - 40);
     }
 }
