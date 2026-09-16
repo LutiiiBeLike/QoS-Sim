@@ -19,6 +19,8 @@ java -cp out de.schule.mqttqos.MqttQosSimulator
 
 Die Anwendung öffnet ein Fenster. QoS-Stufe und Paketverlust auswählen und anschließend auf **„Nachricht senden“** klicken. Während die Pakete animiert werden, sind die Eingaben gesperrt. Das Ereignisprotokoll beschreibt jede Übertragung und das Ergebnis.
 
+Mit **„Abbrechen“** kann eine laufende Animation jederzeit beendet werden. Die ausstehenden Pakete werden verworfen und die Einstellungen wieder freigeschaltet.
+
 ## MQTT-QoS kurz erklärt
 
 | Stufe | Zusage | Ablauf in dieser Simulation |

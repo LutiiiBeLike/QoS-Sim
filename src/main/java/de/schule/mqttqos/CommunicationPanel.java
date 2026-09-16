@@ -14,6 +14,7 @@ import javax.swing.Timer;
 public final class CommunicationPanel extends JPanel {
     private PacketEvent activePacket;
     private double packetProgress;
+    private Timer activeTimer;
     public CommunicationPanel() {
         setPreferredSize(new Dimension(700, 230));
         setBackground(Color.WHITE);
@@ -21,15 +22,18 @@ public final class CommunicationPanel extends JPanel {
 
     /** Animates one packet and invokes {@code onFinished} on the Swing event thread. */
     public void animate(PacketEvent packet, Runnable onFinished) {
+        cancelAnimation();
         activePacket = packet;
         packetProgress = 0;
         long startedAt = System.nanoTime();
         Timer timer = new Timer(15, null);
+        activeTimer = timer;
         timer.addActionListener(event -> {
             packetProgress = Math.min(1.0, (System.nanoTime() - startedAt) / 650_000_000.0);
             repaint();
             if (packetProgress >= 1.0) {
                 timer.stop();
+                activeTimer = null;
                 activePacket = null;
                 repaint();
                 onFinished.run();
@@ -37,6 +41,17 @@ public final class CommunicationPanel extends JPanel {
         });
         timer.setInitialDelay(0);
         timer.start();
+    }
+
+    /** Stops the current packet animation without invoking its completion callback. */
+    public void cancelAnimation() {
+        if (activeTimer != null) {
+            activeTimer.stop();
+            activeTimer = null;
+        }
+        activePacket = null;
+        packetProgress = 0;
+        repaint();
     }
 
     @Override

@@ -28,6 +28,7 @@ public final class SimulatorFrame extends JFrame {
     private final JSlider lossSlider = new JSlider(0, 100, 10);
     private final JLabel lossValueLabel = new JLabel("10 %", SwingConstants.RIGHT);
     private final JButton sendButton = new JButton("Nachricht senden");
+    private final JButton cancelButton = new JButton("Abbrechen");
     private final JTextArea explanationArea = new JTextArea();
     private final JTextArea logArea = new JTextArea();
     private final CommunicationPanel communicationPanel = new CommunicationPanel();
@@ -52,6 +53,7 @@ public final class SimulatorFrame extends JFrame {
 
         lossSlider.addChangeListener(event -> lossValueLabel.setText(lossSlider.getValue() + " %"));
         sendButton.addActionListener(event -> startSimulation());
+        cancelButton.addActionListener(event -> cancelSimulation());
         qos0Button.addActionListener(event -> updateQosExplanation());
         qos1Button.addActionListener(event -> updateQosExplanation());
         qos2Button.addActionListener(event -> updateQosExplanation());
@@ -98,6 +100,8 @@ public final class SimulatorFrame extends JFrame {
         controls.add(lossSlider);
         controls.add(lossValueLabel);
         controls.add(sendButton);
+        cancelButton.setEnabled(false);
+        controls.add(cancelButton);
         return controls;
     }
 
@@ -130,6 +134,9 @@ public final class SimulatorFrame extends JFrame {
     }
 
     private void animateNextEvent() {
+        if (activeResult == null) {
+            return;
+        }
         PacketEvent event = pendingEvents.pollFirst();
         if (event == null) {
             appendLog("ERGEBNIS: " + activeResult.finalMessage());
@@ -139,6 +146,9 @@ public final class SimulatorFrame extends JFrame {
         appendLog(event.source().label() + " → " + event.destination().label() + ": "
                 + event.displayName() + " (Versuch " + event.attempt() + ") wird gesendet.");
         communicationPanel.animate(event, () -> {
+            if (activeResult == null) {
+                return;
+            }
             if (event.lost()) {
                 appendLog("  Paketverlust: " + event.displayName() + " ist nicht angekommen.");
             } else {
@@ -159,6 +169,18 @@ public final class SimulatorFrame extends JFrame {
         qos2Button.setEnabled(enabled);
         lossSlider.setEnabled(enabled);
         sendButton.setEnabled(enabled);
+        cancelButton.setEnabled(!enabled);
+    }
+
+    private void cancelSimulation() {
+        if (activeResult == null) {
+            return;
+        }
+        communicationPanel.cancelAnimation();
+        pendingEvents.clear();
+        activeResult = null;
+        appendLog("ABGEBROCHEN: Die Simulation wurde vom Benutzer beendet.");
+        setControlsEnabled(true);
     }
 
     private void updateQosExplanation() {
