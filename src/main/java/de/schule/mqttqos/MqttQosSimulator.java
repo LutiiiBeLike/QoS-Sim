@@ -9,7 +9,7 @@ public final class MqttQosSimulator {
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
-            // The user interface is added in the next implementation step.
+            new SimulatorFrame().setVisible(true);
         });
     }
 }
