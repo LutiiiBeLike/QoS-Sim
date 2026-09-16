@@ -132,8 +132,7 @@ public final class SimulatorFrame extends JFrame {
     private void animateNextEvent() {
         PacketEvent event = pendingEvents.pollFirst();
         if (event == null) {
-            appendLog(activeResult.delivered() ? "ERGEBNIS: " + activeResult.finalMessage()
-                    : "ERGEBNIS: " + activeResult.finalMessage());
+            appendLog("ERGEBNIS: " + activeResult.finalMessage());
             setControlsEnabled(true);
             return;
         }
