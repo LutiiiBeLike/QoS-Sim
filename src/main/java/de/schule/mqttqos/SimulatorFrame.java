@@ -28,7 +28,7 @@ public final class SimulatorFrame extends JFrame {
     private final JSlider lossSlider = new JSlider(0, 100, 10);
     private final JLabel lossValueLabel = new JLabel("10 %", SwingConstants.RIGHT);
     private final JButton sendButton = new JButton("Nachricht senden");
-    private final JLabel explanationLabel = new JLabel("Wähle eine QoS-Stufe und starte die Simulation.");
+    private final JTextArea explanationArea = new JTextArea();
     private final JTextArea logArea = new JTextArea();
     private final CommunicationPanel communicationPanel = new CommunicationPanel();
     private final MqttSimulationEngine simulationEngine =
@@ -52,6 +52,15 @@ public final class SimulatorFrame extends JFrame {
 
         lossSlider.addChangeListener(event -> lossValueLabel.setText(lossSlider.getValue() + " %"));
         sendButton.addActionListener(event -> startSimulation());
+        qos0Button.addActionListener(event -> updateQosExplanation());
+        qos1Button.addActionListener(event -> updateQosExplanation());
+        qos2Button.addActionListener(event -> updateQosExplanation());
+        explanationArea.setEditable(false);
+        explanationArea.setOpaque(false);
+        explanationArea.setLineWrap(true);
+        explanationArea.setWrapStyleWord(true);
+        explanationArea.setFont(getFont());
+        updateQosExplanation();
     }
 
     private JPanel createHeader() {
@@ -59,7 +68,7 @@ public final class SimulatorFrame extends JFrame {
         JLabel title = new JLabel("MQTT Quality of Service (QoS) interaktiv verstehen");
         title.setFont(title.getFont().deriveFont(Font.BOLD, 22f));
         header.add(title, BorderLayout.NORTH);
-        header.add(explanationLabel, BorderLayout.SOUTH);
+        header.add(explanationArea, BorderLayout.SOUTH);
         return header;
     }
 
@@ -151,5 +160,18 @@ public final class SimulatorFrame extends JFrame {
         qos2Button.setEnabled(enabled);
         lossSlider.setEnabled(enabled);
         sendButton.setEnabled(enabled);
+    }
+
+    private void updateQosExplanation() {
+        if (qos0Button.isSelected()) {
+            explanationArea.setText("QoS 0 – höchstens einmal: PUBLISH wird ohne Bestätigung gesendet. "
+                    + "Bei Paketverlust kann die Nachricht verloren gehen.");
+        } else if (qos1Button.isSelected()) {
+            explanationArea.setText("QoS 1 – mindestens einmal: PUBLISH wird mit PUBACK bestätigt. "
+                    + "Geht die Bestätigung verloren, wird PUBLISH erneut gesendet; Duplikate sind möglich.");
+        } else {
+            explanationArea.setText("QoS 2 – genau einmal: PUBLISH → PUBREC → PUBREL → PUBCOMP. "
+                    + "Der aufwendigste Ablauf verhindert eine doppelte Zustellung.");
+        }
     }
 }
